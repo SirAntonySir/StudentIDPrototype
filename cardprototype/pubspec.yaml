@@ -60,6 +60,8 @@ flutter:
   assets:
     - assets/holograms/LMU-Sigel.svg
     - assets/holograms/legal_logo.svg
+    - assets/holograms/LMUcard.svg
+    - assets/grain/grain1.jpeg
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

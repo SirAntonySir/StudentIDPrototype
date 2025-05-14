@@ -6,7 +6,94 @@ import 'dart:ui' as ui;
 import 'package:flutter_svg/flutter_svg.dart';
 
 class HolographicCard extends StatefulWidget {
-  const HolographicCard({super.key});
+  // User data
+  final String name;
+  final String email;
+  final String validUntil;
+  final String matrikelnr;
+  final String lrzKennung;
+  final String braille;
+
+  // Card dimensions
+  final double width;
+  final double height;
+  final double borderRadius;
+  final double borderWidth;
+  // Card colors
+  final Color cardColor;
+  final Color textColor;
+  final Color secondaryTextColor;
+  final Color logoColor;
+  final Color hologramColor;
+  final Color borderCardColor;
+  // Shadow properties
+  final double ambientShadowOpacity;
+  final double ambientShadowBlur;
+  final double ambientShadowYOffset;
+  final double primaryShadowOpacity;
+  final double midShadowOpacity;
+  final double distantShadowOpacity;
+
+  // Movement sensitivity
+  final double gestureSensitivity;
+  final double gyroSensitivity;
+  final double gyroSmoothing;
+  final double hologramCenterMovement;
+  final double shadowOffsetMultiplier;
+  final double shadowIntensityMultiplier;
+
+  // Assets
+  final String? logoAsset;
+  final String? hologramAsset;
+  final String? hologramAsset2;
+  final String? textureAsset;
+
+  const HolographicCard({
+    super.key,
+    // User data
+    this.name = 'Anton Rockenstein',
+    this.email = 'Anton.Rockenstein@campus.lmu.de',
+    this.validUntil = 'Gültig bis 30.09.2025',
+    this.matrikelnr = '12842818',
+    this.lrzKennung = 'roa1284',
+    this.braille = '⠇⠍⠥',
+
+    // Card dimensions
+    this.width = 350,
+    this.height = 220,
+    this.borderRadius = 15,
+    this.borderWidth = 2.0,
+
+    // Card colors
+    this.cardColor = const Color(0xFFBEBEBE), // Light gray
+    this.textColor = Colors.black,
+    this.secondaryTextColor = Colors.black54,
+    this.logoColor = Colors.black,
+    this.hologramColor = Colors.white70,
+    this.borderCardColor = Colors.black,
+
+    // Shadow properties
+    this.ambientShadowOpacity = 0.4,
+    this.ambientShadowBlur = 30,
+    this.ambientShadowYOffset = 8,
+    this.primaryShadowOpacity = 0.30,
+    this.midShadowOpacity = 0.15,
+    this.distantShadowOpacity = 0.05,
+
+    // Movement sensitivity
+    this.gestureSensitivity = 0.3,
+    this.gyroSensitivity = 0.3,
+    this.gyroSmoothing = 0.85,
+    this.hologramCenterMovement = 0.3,
+    this.shadowOffsetMultiplier = 25,
+    this.shadowIntensityMultiplier = 2.5,
+
+    // Assets
+    this.logoAsset,
+    this.hologramAsset = 'assets/holograms/LMU-Sigel.svg',
+    this.hologramAsset2 = 'assets/holograms/LMUcard.svg',
+    this.textureAsset = 'assets/grain/grain1.jpeg',
+  });
 
   @override
   State<HolographicCard> createState() => _HolographicCardState();
@@ -14,24 +101,13 @@ class HolographicCard extends StatefulWidget {
 
 class _HolographicCardState extends State<HolographicCard>
     with TickerProviderStateMixin {
-  // Changed to TickerProviderStateMixin for multiple controllers
-  // Mock data based on the image
-  final String name = 'Anton Rockenstein';
-  final String email = 'Anton.Rockenstein@campus.lmu.de';
-  final String validUntil = 'Gültig bis 30.09.2025';
-  final String matrikelnr = '12842818';
-  final String lrzKennung = 'roa1284';
-
-  Offset _offset =
-      Offset.zero; // To store the pointer offset (now relative to center)
-  // bool _isPointerDown = false; // No longer strictly needed for this logic version
-  late AnimationController _returnToCenterController; // Renamed for clarity
+  Offset _offset = Offset.zero; // To store the pointer offset
+  late AnimationController _returnToCenterController;
   late Animation<Offset> _returnAnimation;
 
   // For device motion
-  Offset _gyroscopeOffset = Offset.zero; // Stores tilt derived from gyroscope
-  Offset _targetGyroscopeOffset =
-      Offset.zero; // Target values for smooth interpolation
+  Offset _gyroscopeOffset = Offset.zero;
+  Offset _targetGyroscopeOffset = Offset.zero;
   StreamSubscription? _gyroscopeSubscription;
   late AnimationController _gyroSmoothingController;
   DateTime _lastGyroUpdate = DateTime.now();
@@ -40,12 +116,6 @@ class _HolographicCardState extends State<HolographicCard>
   // For flip animation
   late AnimationController _flipController;
   bool _isFlipped = false;
-
-  // Sensitivity factors (can be tweaked)
-  static const double _gestureSensitivity = 0.3;
-  static const double _gyroSensitivity = 0.3;
-  static const double _gyroSmoothing =
-      0.85; // Higher = smoother but more latency
 
   ui.FragmentProgram? _holographicProgram;
 
@@ -86,10 +156,10 @@ class _HolographicCardState extends State<HolographicCard>
 
     // Update target values
     _targetGyroscopeOffset = Offset(
-      _targetGyroscopeOffset.dx * _gyroSmoothing +
-          (event.y * _gyroSensitivity) * (1 - _gyroSmoothing),
-      _targetGyroscopeOffset.dy * _gyroSmoothing +
-          (-event.x * _gyroSensitivity) * (1 - _gyroSmoothing),
+      _targetGyroscopeOffset.dx * widget.gyroSmoothing +
+          (event.y * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
+      _targetGyroscopeOffset.dy * widget.gyroSmoothing +
+          (-event.x * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
     );
 
     // Ensure animation is running
@@ -143,8 +213,8 @@ class _HolographicCardState extends State<HolographicCard>
   @override
   Widget build(BuildContext context) {
     // Parallax rotations from gestures (offset is now -0.5 to 0.5)
-    final double gestureRotateX = -_offset.dy * _gestureSensitivity;
-    final double gestureRotateY = _offset.dx * _gestureSensitivity;
+    final double gestureRotateX = -_offset.dy * widget.gestureSensitivity;
+    final double gestureRotateY = _offset.dx * widget.gestureSensitivity;
 
     // Parallax rotations from gyroscope
     final double gyroRotateX =
@@ -158,7 +228,6 @@ class _HolographicCardState extends State<HolographicCard>
 
     return GestureDetector(
       onPanStart: (details) {
-        // setState(() { _isPointerDown = true; }); // Not strictly needed
         _returnToCenterController.stop();
       },
       onPanUpdate: (details) {
@@ -172,7 +241,6 @@ class _HolographicCardState extends State<HolographicCard>
         });
       },
       onPanEnd: (details) {
-        // setState(() { _isPointerDown = false; }); // Not strictly needed
         _returnAnimation = Tween<Offset>(
           begin: _offset,
           end: Offset.zero, // Animate back to center
@@ -213,282 +281,442 @@ class _HolographicCardState extends State<HolographicCard>
               // Apply flip transform
               transform: flipTransform,
               alignment: FractionalOffset.center,
-              child: child,
+              child: Builder(
+                builder: (context) {
+                  // Calculate combined movement here so it's available for shadow
+                  final combinedX = _offset.dx + _gyroscopeOffset.dx;
+                  final combinedY = _offset.dy + _gyroscopeOffset.dy;
+
+                  // Calculate shadow values based on tilt
+                  final shadowIntensity =
+                      math.sqrt(combinedX * combinedX + combinedY * combinedY) *
+                      widget.shadowIntensityMultiplier;
+                  final shadowIntensityLimited = shadowIntensity.clamp(
+                    0.0,
+                    1.0,
+                  );
+
+                  // Shadow direction based on tilt
+                  final shadowOffsetX =
+                      -combinedX * widget.shadowOffsetMultiplier;
+                  final shadowOffsetY =
+                      -combinedY * widget.shadowOffsetMultiplier;
+
+                  // Shadow size increases with intensity
+                  final shadowSpreadBase = 0.2;
+                  final shadowSpread =
+                      shadowSpreadBase + shadowIntensityLimited * 2.0;
+
+                  // Shadow blur increases with distance from card
+                  final shadowBlurBase = 6.0;
+                  final shadowBlur =
+                      shadowBlurBase + shadowIntensityLimited * 25.0;
+
+                  return Container(
+                    width: widget.width,
+                    height: widget.height,
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        // Ambient soft shadow that's always visible for resting state
+                        BoxShadow(
+                          color: Colors.black.withOpacity(
+                            widget.ambientShadowOpacity,
+                          ),
+                          blurRadius: widget.ambientShadowBlur,
+                          offset: Offset(0, widget.ambientShadowYOffset),
+                          spreadRadius: 0,
+                        ),
+                        // Primary shadow - closest to card, follows movement most
+                        BoxShadow(
+                          color: Colors.black.withOpacity(
+                            widget.primaryShadowOpacity *
+                                shadowIntensityLimited,
+                          ),
+                          blurRadius: shadowBlur * 0.3,
+                          offset: Offset(
+                            shadowOffsetX * 0.8,
+                            shadowOffsetY * 0.8 + 2,
+                          ),
+                          spreadRadius: shadowSpread * 0.3,
+                        ),
+                        // Mid-level shadow - larger spread, more diffuse
+                        BoxShadow(
+                          color: Colors.black.withOpacity(
+                            widget.midShadowOpacity * shadowIntensityLimited,
+                          ),
+                          blurRadius: shadowBlur * 0.8,
+                          offset: Offset(
+                            shadowOffsetX * 0.9,
+                            shadowOffsetY * 0.9 + 6,
+                          ),
+                          spreadRadius: shadowSpread * 0.8,
+                        ),
+                        // Distant shadow - largest, most diffuse
+                        BoxShadow(
+                          color: Colors.black.withOpacity(
+                            widget.distantShadowOpacity *
+                                shadowIntensityLimited,
+                          ),
+                          blurRadius: shadowBlur * 1.5,
+                          offset: Offset(shadowOffsetX, shadowOffsetY + 10),
+                          spreadRadius: shadowSpread * 1.5,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(widget.borderRadius),
+                      child: ShaderMask(
+                        shaderCallback: (Rect bounds) {
+                          if (_holographicProgram == null) {
+                            return ui.Gradient.linear(
+                              Offset.zero,
+                              Offset(bounds.width, bounds.height),
+                              [Colors.transparent, Colors.transparent],
+                            );
+                          }
+
+                          final shader = _holographicProgram!.fragmentShader();
+
+                          // Combine touch and gyroscope effects
+                          final combinedX = _offset.dx + _gyroscopeOffset.dx;
+                          final combinedY = _offset.dy + _gyroscopeOffset.dy;
+
+                          // Calculate center position based on movement
+                          // Invert the movement for more natural feel (tilt right = effect moves left)
+                          final centerX =
+                              0.5 + // Center point
+                              (-combinedX * widget.hologramCenterMovement)
+                                  .clamp(-0.3, 0.3); // Move ±0.3 from center
+
+                          final centerY =
+                              0.5 + // Center point
+                              (-combinedY * widget.hologramCenterMovement)
+                                  .clamp(-0.3, 0.3); // Move ±0.3 from center
+
+                          shader.setFloat(0, bounds.width);
+                          shader.setFloat(1, bounds.height);
+                          // Use combined movement for shader pointer position
+                          shader.setFloat(2, (combinedX + 0.5).clamp(0.0, 1.0));
+                          shader.setFloat(3, (combinedY + 0.5).clamp(0.0, 1.0));
+                          shader.setFloat(4, centerX);
+                          shader.setFloat(5, centerY);
+
+                          return shader;
+                        },
+                        blendMode: BlendMode.srcOver,
+                        child: Container(
+                          width: widget.width,
+                          height: widget.height,
+                          decoration: BoxDecoration(
+                            color: widget.cardColor,
+                            borderRadius: BorderRadius.circular(
+                              widget.borderRadius,
+                            ),
+                            border: Border.all(
+                              color: widget.borderCardColor,
+                              width: widget.borderWidth,
+                            ),
+                          ),
+                          child: Stack(
+                            children: [
+                              // Conditionally show front or back
+                              if (_flipController.value < 0.5) ...[
+                                // LMU Logo (top-left)
+                                Positioned(
+                                  top: 20,
+                                  left: 20,
+                                  child:
+                                      widget.logoAsset != null
+                                          ? SvgPicture.asset(
+                                            widget.logoAsset!,
+                                            width: 62,
+                                            height: 32,
+                                            colorFilter: ColorFilter.mode(
+                                              widget.logoColor,
+                                              BlendMode.srcIn,
+                                            ),
+                                          )
+                                          : Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  4,
+                                                ),
+                                                color: Colors.black,
+                                                child: Text(
+                                                  'LMU',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                              Text(
+                                                'LUDWIG-\nMAXIMILIANS-\nUNIVERSITÄT\nMÜNCHEN',
+                                                style: TextStyle(
+                                                  color: widget.textColor,
+                                                  fontSize:
+                                                      5, // Very small text
+                                                  height: 1.2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                ),
+
+                                // Name
+                                Positioned(
+                                  top: 70,
+                                  left: 20,
+                                  child: Text(
+                                    widget.name,
+                                    style: TextStyle(
+                                      color: widget.textColor,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+
+                                // Email
+                                Positioned(
+                                  top: 95,
+                                  left: 20,
+                                  child: Text(
+                                    widget.email,
+                                    style: TextStyle(
+                                      color: widget.secondaryTextColor,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+
+                                // Valid until
+                                Positioned(
+                                  top: 115,
+                                  left: 20,
+                                  child: Text(
+                                    widget.validUntil,
+                                    style: TextStyle(
+                                      color: widget.textColor,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+
+                                // Matrikelnr
+                                Positioned(
+                                  bottom: 20,
+                                  left: 20,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Matrikelnr',
+                                        style: TextStyle(
+                                          color: widget.secondaryTextColor,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            widget.matrikelnr,
+                                            style: TextStyle(
+                                              color: widget.textColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Icon(
+                                            Icons.copy,
+                                            color: widget.secondaryTextColor,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // LRZ Kennung
+                                Positioned(
+                                  bottom: 20,
+                                  right: 20,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        'LRZ Kennung',
+                                        style: TextStyle(
+                                          color: widget.secondaryTextColor,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            widget.lrzKennung,
+                                            style: TextStyle(
+                                              color: widget.textColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Icon(
+                                            Icons.copy,
+                                            color: widget.secondaryTextColor,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Braille
+                                Positioned(
+                                  top: 30,
+                                  right: 30, // Changed from right to left
+                                  child: Transform(
+                                    alignment: Alignment.center,
+                                    transform:
+                                        Matrix4.identity()..scale(
+                                          -1.0,
+                                          1.0,
+                                        ), // Horizontal mirror
+                                    child: Text(
+                                      widget.braille,
+                                      style: TextStyle(
+                                        color: widget.textColor.withOpacity(
+                                          0.3,
+                                        ),
+                                        fontSize: 24,
+                                        letterSpacing: 0,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                // Hologram with effect (1st hologram - visible at certain angles)
+                                if (widget.hologramAsset != null)
+                                  Positioned(
+                                    bottom: -30,
+                                    right: 0,
+                                    child: Opacity(
+                                      // Fade in/out based on Y-axis tilt
+                                      opacity: (0.8 - combinedY.abs() * 2)
+                                          .clamp(0.0, 1.0),
+                                      child: ShaderMask(
+                                        shaderCallback: (Rect bounds) {
+                                          return LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              widget.hologramColor.withOpacity(
+                                                0,
+                                              ),
+                                              widget.hologramColor.withOpacity(
+                                                1,
+                                              ),
+                                              widget.hologramColor.withOpacity(
+                                                0,
+                                              ),
+                                            ],
+                                            stops: const [0.0, 0.5, 1.0],
+                                          ).createShader(bounds);
+                                        },
+                                        blendMode: BlendMode.srcIn,
+                                        child: SvgPicture.asset(
+                                          widget.hologramAsset!,
+                                          width: 180,
+                                          height: 180,
+                                          colorFilter: ColorFilter.mode(
+                                            widget.hologramColor,
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                // Second hologram - visible at different angles
+                                if (widget.hologramAsset2 != null)
+                                  Positioned(
+                                    top: 140,
+                                    left: 10,
+                                    child: Opacity(
+                                      // Make it more visible across a wider range of angles
+                                      opacity: (1.0 - combinedX.abs() * 1.5)
+                                          .clamp(0.0, 1.0),
+                                      child: ShaderMask(
+                                        shaderCallback: (Rect bounds) {
+                                          return LinearGradient(
+                                            begin: Alignment.bottomRight,
+                                            end: Alignment.topLeft,
+                                            colors: [
+                                              widget.hologramColor.withOpacity(
+                                                1,
+                                              ),
+                                              widget.hologramColor.withOpacity(
+                                                0.5,
+                                              ),
+                                              widget.hologramColor.withOpacity(
+                                                1,
+                                              ),
+                                            ],
+                                            stops: const [0.0, 0.5, 1.0],
+                                          ).createShader(bounds);
+                                        },
+                                        blendMode: BlendMode.srcIn,
+                                        child: SvgPicture.asset(
+                                          widget.hologramAsset2!,
+                                          width: 120,
+                                          height: 40,
+                                          colorFilter: ColorFilter.mode(
+                                            Colors.white.withOpacity(0.8),
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ] else ...[
+                                // Back of the card
+                                Center(
+                                  child: Transform(
+                                    alignment: Alignment.center,
+                                    transform:
+                                        Matrix4.identity()..rotateY(math.pi),
+                                    child: Text(
+                                      'Card Back',
+                                      style: TextStyle(
+                                        color: widget.textColor,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           );
         },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: ShaderMask(
-            shaderCallback: (Rect bounds) {
-              if (_holographicProgram == null) {
-                return ui.Gradient.linear(
-                  Offset.zero,
-                  Offset(bounds.width, bounds.height),
-                  [Colors.transparent, Colors.transparent],
-                );
-              }
-
-              final shader = _holographicProgram!.fragmentShader();
-
-              // Combine touch and gyroscope effects
-              final combinedX = _offset.dx + _gyroscopeOffset.dx;
-              final combinedY = _offset.dy + _gyroscopeOffset.dy;
-
-              // Calculate center position based on movement
-              // Invert the movement for more natural feel (tilt right = effect moves left)
-              final centerX =
-                  0.5 + // Center point
-                  (-combinedX * 0.3).clamp(-0.3, 0.3); // Move ±0.3 from center
-
-              final centerY =
-                  0.5 + // Center point
-                  (-combinedY * 0.3).clamp(-0.3, 0.3); // Move ±0.3 from center
-
-              shader.setFloat(0, bounds.width);
-              shader.setFloat(1, bounds.height);
-              // Use combined movement for shader pointer position
-              shader.setFloat(2, (combinedX + 0.5).clamp(0.0, 1.0));
-              shader.setFloat(3, (combinedY + 0.5).clamp(0.0, 1.0));
-              shader.setFloat(4, centerX);
-              shader.setFloat(5, centerY);
-
-              return shader;
-            },
-            blendMode: BlendMode.srcOver,
-            child: Builder(
-              builder: (context) {
-                // Calculate combined movement here so it's available for both shader and shadow
-                final combinedX = _offset.dx + _gyroscopeOffset.dx;
-                final combinedY = _offset.dy + _gyroscopeOffset.dy;
-
-                return Container(
-                  width: 350,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    color: Colors.green[800],
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      // Main shadow that moves with tilt
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: Offset(
-                          -combinedX * 20, // Shadow moves opposite to tilt
-                          -combinedY * 20 + 5, // Add base Y offset of 5
-                        ),
-                        spreadRadius: 2,
-                      ),
-                      // Ambient shadow that stays constant
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                        spreadRadius: -2,
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      // Conditionally show front or back
-                      if (_flipController.value < 0.5) ...[
-                        // LMU Logo (top-left) - Placeholder
-                        Positioned(
-                          top: 20,
-                          left: 20,
-                          child: SvgPicture.asset(
-                            'assets/holograms/legal_logo.svg',
-                            width: 45,
-                            height: 45,
-                            colorFilter: const ColorFilter.mode(
-                              Colors.black,
-                              BlendMode.srcATop,
-                            ),
-                          ),
-                        ),
-
-                        // Name
-                        Positioned(
-                          top: 70,
-                          left: 20,
-                          child: Text(
-                            name,
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-
-                        // Email
-                        Positioned(
-                          top: 95,
-                          left: 20,
-                          child: Text(
-                            email,
-                            style: const TextStyle(
-                              color: Colors.black54,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-
-                        // Valid until
-                        Positioned(
-                          top: 115,
-                          left: 20,
-                          child: Text(
-                            validUntil,
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-
-                        // Matrikelnr
-                        Positioned(
-                          bottom: 20,
-                          left: 20,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Matrikelnr',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    matrikelnr,
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  const Icon(
-                                    Icons.copy,
-                                    color: Colors.black54,
-                                    size: 16,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // LRZ Kennung
-                        Positioned(
-                          bottom: 20,
-                          right: 20,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                'LRZ Kennung',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    lrzKennung,
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  const Icon(
-                                    Icons.copy,
-                                    color: Colors.black54,
-                                    size: 16,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Placeholder for Braille dots
-                        Positioned(
-                          top: 20,
-                          right: 20,
-                          child: Text(
-                            '● ●●\n●● ●',
-                            style: TextStyle(
-                              color: Colors.black.withOpacity(0.5),
-                              fontSize: 10,
-                              letterSpacing: 2,
-                              height: 0.8,
-                            ),
-                          ),
-                        ),
-
-                        // LMU Sigel with holographic effect
-                        Positioned(
-                          bottom: -30,
-                          right: 10,
-                          child: Opacity(
-                            opacity: 1,
-                            child: ShaderMask(
-                              shaderCallback: (Rect bounds) {
-                                return LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.green[400]!.withOpacity(0),
-                                    Colors.green[400]!.withOpacity(1),
-                                    Colors.green[400]!.withOpacity(0),
-                                  ],
-                                  stops: const [0.0, 0.5, 1.0],
-                                ).createShader(bounds);
-                              },
-                              blendMode: BlendMode.srcIn,
-                              child: SvgPicture.asset(
-                                'assets/holograms/LMU-Sigel.svg',
-                                width: 200,
-                                height: 200,
-                                colorFilter: const ColorFilter.mode(
-                                  Colors.white70,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        // Back of the card
-                        Center(
-                          child: Transform(
-                            alignment: Alignment.center,
-                            transform: Matrix4.identity()..rotateY(math.pi),
-                            child: const Text(
-                              'Card Back',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
       ),
     );
   }
