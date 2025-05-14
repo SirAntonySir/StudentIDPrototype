@@ -33,7 +33,6 @@ class HolographicCard extends StatefulWidget {
   final double primaryShadowOpacity;
   final double midShadowOpacity;
   final double distantShadowOpacity;
-
   // Movement sensitivity
   final double gestureSensitivity;
   final double gyroSensitivity;
@@ -71,6 +70,8 @@ class HolographicCard extends StatefulWidget {
     this.logoColor = Colors.black,
     this.hologramColor = Colors.white70,
     this.borderCardColor = Colors.black,
+
+    // Shader intensity
 
     // Shadow properties
     this.ambientShadowOpacity = 0.4,
@@ -154,12 +155,12 @@ class _HolographicCardState extends State<HolographicCard>
     }
     _lastGyroUpdate = now;
 
-    // Update target values
+    // Update target values - Inverted the signs for more natural movement
     _targetGyroscopeOffset = Offset(
       _targetGyroscopeOffset.dx * widget.gyroSmoothing +
-          (event.y * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
+          (-event.y * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
       _targetGyroscopeOffset.dy * widget.gyroSmoothing +
-          (-event.x * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
+          (event.x * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
     );
 
     // Ensure animation is running
@@ -365,350 +366,384 @@ class _HolographicCardState extends State<HolographicCard>
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(widget.borderRadius),
-                      child: ShaderMask(
-                        shaderCallback: (Rect bounds) {
-                          if (_holographicProgram == null) {
-                            return ui.Gradient.linear(
-                              Offset.zero,
-                              Offset(bounds.width, bounds.height),
-                              [Colors.transparent, Colors.transparent],
-                            );
-                          }
+                      child: Stack(
+                        children: [
+                          // Base card with holographic effects
+                          ShaderMask(
+                            shaderCallback: (Rect bounds) {
+                              if (_holographicProgram == null) {
+                                return ui.Gradient.linear(
+                                  Offset.zero,
+                                  Offset(bounds.width, bounds.height),
+                                  [Colors.transparent, Colors.transparent],
+                                );
+                              }
 
-                          final shader = _holographicProgram!.fragmentShader();
+                              final shader =
+                                  _holographicProgram!.fragmentShader();
 
-                          // Combine touch and gyroscope effects
-                          final combinedX = _offset.dx + _gyroscopeOffset.dx;
-                          final combinedY = _offset.dy + _gyroscopeOffset.dy;
+                              // Combine touch and gyroscope effects
+                              final combinedX =
+                                  _offset.dx + _gyroscopeOffset.dx;
+                              final combinedY =
+                                  _offset.dy + _gyroscopeOffset.dy;
 
-                          // Calculate center position based on movement
-                          // Invert the movement for more natural feel (tilt right = effect moves left)
-                          final centerX =
-                              0.5 + // Center point
-                              (-combinedX * widget.hologramCenterMovement)
-                                  .clamp(-0.3, 0.3); // Move ±0.3 from center
+                              // Mirror the effect when card is flipped
+                              final effectX =
+                                  _flipController.value >= 0.5
+                                      ? -combinedX
+                                      : combinedX;
+                              final effectY = combinedY;
 
-                          final centerY =
-                              0.5 + // Center point
-                              (-combinedY * widget.hologramCenterMovement)
-                                  .clamp(-0.3, 0.3); // Move ±0.3 from center
+                              final centerX =
+                                  0.5 +
+                                  (-effectX * widget.hologramCenterMovement)
+                                      .clamp(-0.3, 0.3);
+                              final centerY =
+                                  0.5 +
+                                  (-effectY * widget.hologramCenterMovement)
+                                      .clamp(-0.3, 0.3);
 
-                          shader.setFloat(0, bounds.width);
-                          shader.setFloat(1, bounds.height);
-                          // Use combined movement for shader pointer position
-                          shader.setFloat(2, (combinedX + 0.5).clamp(0.0, 1.0));
-                          shader.setFloat(3, (combinedY + 0.5).clamp(0.0, 1.0));
-                          shader.setFloat(4, centerX);
-                          shader.setFloat(5, centerY);
-
-                          return shader;
-                        },
-                        blendMode: BlendMode.srcOver,
-                        child: Container(
-                          width: widget.width,
-                          height: widget.height,
-                          decoration: BoxDecoration(
-                            color: widget.cardColor,
-                            borderRadius: BorderRadius.circular(
-                              widget.borderRadius,
-                            ),
-                            border: Border.all(
-                              color: widget.borderCardColor,
-                              width: widget.borderWidth,
+                              shader.setFloat(0, bounds.width);
+                              shader.setFloat(1, bounds.height);
+                              shader.setFloat(
+                                2,
+                                (effectX + 0.5).clamp(0.0, 1.0),
+                              );
+                              shader.setFloat(
+                                3,
+                                (effectY + 0.5).clamp(0.0, 1.0),
+                              );
+                              shader.setFloat(4, centerX);
+                              shader.setFloat(5, centerY);
+                              return shader;
+                            },
+                            blendMode: BlendMode.srcOver,
+                            child: Container(
+                              width: widget.width,
+                              height: widget.height,
+                              color: widget.cardColor,
                             ),
                           ),
-                          child: Stack(
-                            children: [
-                              // Conditionally show front or back
-                              if (_flipController.value < 0.5) ...[
-                                // LMU Logo (top-left)
-                                Positioned(
-                                  top: 20,
-                                  left: 20,
-                                  child:
-                                      widget.logoAsset != null
-                                          ? SvgPicture.asset(
-                                            widget.logoAsset!,
-                                            width: 62,
-                                            height: 32,
-                                            colorFilter: ColorFilter.mode(
-                                              widget.logoColor,
-                                              BlendMode.srcIn,
-                                            ),
-                                          )
-                                          : Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(
-                                                  4,
+
+                          // Holographic watermarks layer
+                          if (_flipController.value < 0.5) ...[
+                            ..._buildHolographicWatermarks(
+                              combinedX: _offset.dx + _gyroscopeOffset.dx,
+                              combinedY: _offset.dy + _gyroscopeOffset.dy,
+                            ),
+
+                            // First hologram
+                            if (widget.hologramAsset != null)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Opacity(
+                                  opacity: (0.8 -
+                                          (_offset.dy + _gyroscopeOffset.dy)
+                                                  .abs() *
+                                              2)
+                                      .clamp(0.0, 1.0),
+                                  child: ShaderMask(
+                                    shaderCallback: (Rect bounds) {
+                                      return LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          widget.hologramColor.withOpacity(0),
+                                          widget.hologramColor.withOpacity(1),
+                                          widget.hologramColor.withOpacity(0),
+                                        ],
+                                        stops: const [0.0, 0.5, 1.0],
+                                      ).createShader(bounds);
+                                    },
+                                    blendMode: BlendMode.srcIn,
+                                    child: SvgPicture.asset(
+                                      widget.hologramAsset!,
+                                      width: 150,
+                                      height: 150,
+                                      colorFilter: ColorFilter.mode(
+                                        widget.hologramColor,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                            // Second hologram
+                            if (widget.hologramAsset2 != null)
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: Opacity(
+                                  opacity:
+                                      (_offset.dx + _gyroscopeOffset.dx) > 0.15
+                                          ? (((_offset.dx +
+                                                          _gyroscopeOffset.dx) -
+                                                      0.15) *
+                                                  5)
+                                              .clamp(0.0, 0.9)
+                                          : 0.0,
+                                  child: ShaderMask(
+                                    shaderCallback: (Rect bounds) {
+                                      return LinearGradient(
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                        colors: [
+                                          widget.hologramColor.withOpacity(0.4),
+                                          widget.hologramColor.withOpacity(0.6),
+                                          widget.hologramColor.withOpacity(0.4),
+                                        ],
+                                        stops: const [0.0, 0.5, 1.0],
+                                      ).createShader(bounds);
+                                    },
+                                    blendMode: BlendMode.srcIn,
+                                    child: SvgPicture.asset(
+                                      widget.hologramAsset2!,
+                                      width: widget.width,
+                                      height: 40,
+                                      fit: BoxFit.fitWidth,
+                                      colorFilter: ColorFilter.mode(
+                                        Colors.white,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+
+                          // Content layer (front or back)
+                          Container(
+                            width: widget.width,
+                            height: widget.height,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(
+                                widget.borderRadius,
+                              ),
+                              border: Border.all(
+                                color: widget.borderCardColor,
+                                width: widget.borderWidth,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                widget.borderRadius,
+                              ),
+                              child: Stack(
+                                children: [
+                                  if (_flipController.value < 0.5) ...[
+                                    // Front content
+                                    // LMU Logo
+                                    Positioned(
+                                      top: 20,
+                                      left: 20,
+                                      child:
+                                          widget.logoAsset != null
+                                              ? SvgPicture.asset(
+                                                widget.logoAsset!,
+                                                width: 62,
+                                                height: 32,
+                                                colorFilter: ColorFilter.mode(
+                                                  widget.logoColor,
+                                                  BlendMode.srcIn,
                                                 ),
-                                                color: Colors.black,
-                                                child: Text(
-                                                  'LMU',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
+                                              )
+                                              : Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.all(4),
+                                                    color: Colors.black,
+                                                    child: Text(
+                                                      'LMU',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
+                                                  Text(
+                                                    'LUDWIG-\nMAXIMILIANS-\nUNIVERSITÄT\nMÜNCHEN',
+                                                    style: TextStyle(
+                                                      color: widget.textColor,
+                                                      fontSize: 5,
+                                                      height: 1.2,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
+                                    ),
+
+                                    // Name
+                                    Positioned(
+                                      top: 70,
+                                      left: 20,
+                                      child: Text(
+                                        widget.name,
+                                        style: TextStyle(
+                                          color: widget.textColor,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Email
+                                    Positioned(
+                                      top: 95,
+                                      left: 20,
+                                      child: Text(
+                                        widget.email,
+                                        style: TextStyle(
+                                          color: widget.secondaryTextColor,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Valid until
+                                    Positioned(
+                                      top: 115,
+                                      left: 20,
+                                      child: Text(
+                                        widget.validUntil,
+                                        style: TextStyle(
+                                          color: widget.textColor,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Matrikelnr
+                                    Positioned(
+                                      bottom: 20,
+                                      left: 20,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Matrikelnr',
+                                            style: TextStyle(
+                                              color: widget.secondaryTextColor,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          Row(
+                                            children: [
                                               Text(
-                                                'LUDWIG-\nMAXIMILIANS-\nUNIVERSITÄT\nMÜNCHEN',
+                                                widget.matrikelnr,
                                                 style: TextStyle(
                                                   color: widget.textColor,
-                                                  fontSize:
-                                                      5, // Very small text
-                                                  height: 1.2,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
+                                              const SizedBox(width: 5),
+                                              Icon(
+                                                Icons.copy,
+                                                color:
+                                                    widget.secondaryTextColor,
+                                                size: 16,
+                                              ),
                                             ],
-                                          ),
-                                ),
-
-                                // Name
-                                Positioned(
-                                  top: 70,
-                                  left: 20,
-                                  child: Text(
-                                    widget.name,
-                                    style: TextStyle(
-                                      color: widget.textColor,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-
-                                // Email
-                                Positioned(
-                                  top: 95,
-                                  left: 20,
-                                  child: Text(
-                                    widget.email,
-                                    style: TextStyle(
-                                      color: widget.secondaryTextColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-
-                                // Valid until
-                                Positioned(
-                                  top: 115,
-                                  left: 20,
-                                  child: Text(
-                                    widget.validUntil,
-                                    style: TextStyle(
-                                      color: widget.textColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-
-                                // Matrikelnr
-                                Positioned(
-                                  bottom: 20,
-                                  left: 20,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Matrikelnr',
-                                        style: TextStyle(
-                                          color: widget.secondaryTextColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            widget.matrikelnr,
-                                            style: TextStyle(
-                                              color: widget.textColor,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Icon(
-                                            Icons.copy,
-                                            color: widget.secondaryTextColor,
-                                            size: 16,
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
 
-                                // LRZ Kennung
-                                Positioned(
-                                  bottom: 20,
-                                  right: 20,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        'LRZ Kennung',
-                                        style: TextStyle(
-                                          color: widget.secondaryTextColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      Row(
+                                    // LRZ Kennung
+                                    Positioned(
+                                      bottom: 20,
+                                      right: 20,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
                                         children: [
                                           Text(
-                                            widget.lrzKennung,
+                                            'LRZ Kennung',
                                             style: TextStyle(
-                                              color: widget.textColor,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                                              color: widget.secondaryTextColor,
+                                              fontSize: 12,
                                             ),
                                           ),
-                                          const SizedBox(width: 5),
-                                          Icon(
-                                            Icons.copy,
-                                            color: widget.secondaryTextColor,
-                                            size: 16,
+                                          Row(
+                                            children: [
+                                              Text(
+                                                widget.lrzKennung,
+                                                style: TextStyle(
+                                                  color: widget.textColor,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Icon(
+                                                Icons.copy,
+                                                color:
+                                                    widget.secondaryTextColor,
+                                                size: 16,
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                // Braille
-                                Positioned(
-                                  top: 30,
-                                  right: 30, // Changed from right to left
-                                  child: Transform(
-                                    alignment: Alignment.center,
-                                    transform:
-                                        Matrix4.identity()..scale(
-                                          -1.0,
-                                          1.0,
-                                        ), // Horizontal mirror
-                                    child: Text(
-                                      widget.braille,
-                                      style: TextStyle(
-                                        color: widget.textColor.withOpacity(
-                                          0.3,
-                                        ),
-                                        fontSize: 24,
-                                        letterSpacing: 0,
-                                        fontWeight: FontWeight.bold,
-                                        height: 1,
-                                      ),
                                     ),
-                                  ),
-                                ),
 
-                                // Hologram with effect (1st hologram - visible at certain angles)
-                                if (widget.hologramAsset != null)
-                                  Positioned(
-                                    bottom: -30,
-                                    right: 0,
-                                    child: Opacity(
-                                      // Fade in/out based on Y-axis tilt
-                                      opacity: (0.8 - combinedY.abs() * 2)
-                                          .clamp(0.0, 1.0),
-                                      child: ShaderMask(
-                                        shaderCallback: (Rect bounds) {
-                                          return LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              widget.hologramColor.withOpacity(
-                                                0,
-                                              ),
-                                              widget.hologramColor.withOpacity(
-                                                1,
-                                              ),
-                                              widget.hologramColor.withOpacity(
-                                                0,
-                                              ),
-                                            ],
-                                            stops: const [0.0, 0.5, 1.0],
-                                          ).createShader(bounds);
-                                        },
-                                        blendMode: BlendMode.srcIn,
-                                        child: SvgPicture.asset(
-                                          widget.hologramAsset!,
-                                          width: 180,
-                                          height: 180,
-                                          colorFilter: ColorFilter.mode(
-                                            widget.hologramColor,
-                                            BlendMode.srcIn,
+                                    // Braille
+                                    Positioned(
+                                      top: 30,
+                                      right: 30,
+                                      child: Transform(
+                                        alignment: Alignment.center,
+                                        transform:
+                                            Matrix4.identity()
+                                              ..scale(-1.0, 1.0),
+                                        child: Text(
+                                          widget.braille,
+                                          style: TextStyle(
+                                            color: widget.textColor.withOpacity(
+                                              0.3,
+                                            ),
+                                            fontSize: 24,
+                                            letterSpacing: 0,
+                                            fontWeight: FontWeight.bold,
+                                            height: 1,
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-
-                                // Second hologram - visible at different angles
-                                if (widget.hologramAsset2 != null)
-                                  Positioned(
-                                    top: 140,
-                                    left: 10,
-                                    child: Opacity(
-                                      // Make it more visible across a wider range of angles
-                                      opacity: (1.0 - combinedX.abs() * 1.5)
-                                          .clamp(0.0, 1.0),
-                                      child: ShaderMask(
-                                        shaderCallback: (Rect bounds) {
-                                          return LinearGradient(
-                                            begin: Alignment.bottomRight,
-                                            end: Alignment.topLeft,
-                                            colors: [
-                                              widget.hologramColor.withOpacity(
-                                                1,
-                                              ),
-                                              widget.hologramColor.withOpacity(
-                                                0.5,
-                                              ),
-                                              widget.hologramColor.withOpacity(
-                                                1,
-                                              ),
-                                            ],
-                                            stops: const [0.0, 0.5, 1.0],
-                                          ).createShader(bounds);
-                                        },
-                                        blendMode: BlendMode.srcIn,
-                                        child: SvgPicture.asset(
-                                          widget.hologramAsset2!,
-                                          width: 120,
-                                          height: 40,
-                                          colorFilter: ColorFilter.mode(
-                                            Colors.white.withOpacity(0.8),
-                                            BlendMode.srcIn,
+                                  ] else ...[
+                                    // Back content
+                                    Center(
+                                      child: Transform(
+                                        alignment: Alignment.center,
+                                        transform:
+                                            Matrix4.identity()
+                                              ..rotateY(math.pi),
+                                        child: Text(
+                                          'Card Back',
+                                          style: TextStyle(
+                                            color: widget.textColor,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                              ] else ...[
-                                // Back of the card
-                                Center(
-                                  child: Transform(
-                                    alignment: Alignment.center,
-                                    transform:
-                                        Matrix4.identity()..rotateY(math.pi),
-                                    child: Text(
-                                      'Card Back',
-                                      style: TextStyle(
-                                        color: widget.textColor,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   );
@@ -719,5 +754,96 @@ class _HolographicCardState extends State<HolographicCard>
         },
       ),
     );
+  }
+
+  List<Widget> _buildHolographicWatermarks({
+    required double combinedX,
+    required double combinedY,
+  }) {
+    final List<Widget> watermarks = [];
+
+    // Define grid properties
+    const int rows = 3;
+    const int cols = 20;
+    final double cellWidth = widget.width / cols;
+    final double cellHeight = widget.height / rows;
+    const double rotation = math.pi / 2;
+
+    // Calculate opacity based on left tilt with shimmer effect
+    final tiltOpacity =
+        combinedX < -0.15 ? ((-combinedX - 0.15) * 5).clamp(0.0, 0.9) : 0.0;
+
+    // Create grid of watermarks
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < cols; col++) {
+        // Base position
+        final x = col * cellWidth;
+        final y = row * cellHeight;
+        final isName = (row + col) % 2 == 0;
+
+        // Parallax offset based on tilt
+        final parallaxX =
+            combinedX *
+            30 *
+            (col / cols); // Horizontal parallax increases with column
+        final parallaxY =
+            combinedY *
+            20 *
+            (row / rows); // Vertical parallax increases with row
+
+        // Shimmer effect - varies with position and tilt
+        final shimmerPhase = (col / cols + row / rows) * math.pi;
+        final shimmerIntensity =
+            (math.sin(shimmerPhase + combinedX * 5) + 1) / 2;
+
+        watermarks.add(
+          Positioned(
+            left: x + (cellWidth - 100) / 2 + parallaxX,
+            top: y + (cellHeight - 20) / 2 + parallaxY,
+            child: Transform.rotate(
+              angle: rotation,
+              child: ShaderMask(
+                shaderCallback: (Rect bounds) {
+                  return LinearGradient(
+                    begin: Alignment(
+                      -0.5 + combinedX, // Gradient moves with tilt
+                      -0.5 + combinedY,
+                    ),
+                    end: Alignment(1.5 + combinedX, 1.5 + combinedY),
+                    colors: [
+                      widget.hologramColor.withOpacity(
+                        (tiltOpacity * 0.4 * (1 + shimmerIntensity * 0.3))
+                            .clamp(0.0, 0.9),
+                      ),
+                      widget.hologramColor.withOpacity(
+                        (tiltOpacity * 0.6 * (1 + shimmerIntensity * 0.5))
+                            .clamp(0.0, 0.9),
+                      ),
+                      widget.hologramColor.withOpacity(
+                        (tiltOpacity * 0.4 * (1 + shimmerIntensity * 0.3))
+                            .clamp(0.0, 0.9),
+                      ),
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ).createShader(bounds);
+                },
+                blendMode: BlendMode.srcIn,
+                child: Text(
+                  (isName ? widget.name : widget.matrikelnr).toUpperCase(),
+                  style: TextStyle(
+                    color: widget.hologramColor,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return watermarks;
   }
 }
