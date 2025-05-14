@@ -150,6 +150,10 @@ class StudentIDCard extends StatelessWidget {
       enableShader: LMUCardTheme.enableShader,
       enableHolographicEffects: LMUCardTheme.enableHolographicEffects,
       enableShadows: LMUCardTheme.enableShadows,
+      invertGyroY: LMUCardTheme.invertGyroY,
+      invertGyroX: LMUCardTheme.invertGyroX,
+      invertGestureX: LMUCardTheme.invertGestureX,
+      invertGestureY: LMUCardTheme.invertGestureY,
 
       // Logo properties
       logoWidth: LMUCardTheme.logoWidth,
@@ -175,6 +179,20 @@ class StudentIDCard extends StatelessWidget {
       hologramAsset: 'assets/holograms/LMU-Sigel.svg',
       hologramAsset2: 'assets/holograms/LMUcard.svg',
       textureAsset: 'assets/grain/grain1.jpeg',
+
+      // Callback functions
+      onCardTap: () {
+        print('Card tapped');
+      },
+      onCardDoubleTap: () {
+        print('Card double tapped');
+      },
+      onMatrikelnrCopy: (String matrikelnr) {
+        print('Matrikelnr copied: $matrikelnr');
+      },
+      onLrzKennungCopy: (String lrzKennung) {
+        print('LRZ Kennung copied: $lrzKennung');
+      },
     );
   }
 }

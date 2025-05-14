@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart'; // For device motion
 import 'dart:ui' as ui;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:developer' as developer;
+import 'package:flutter/services.dart';
 
 class HolographicCard extends StatefulWidget {
   // User data
@@ -73,6 +75,18 @@ class HolographicCard extends StatefulWidget {
   final double shaderPointerInfluence;
   final double shaderColorAmplitude;
   final double shaderBaseAlpha;
+
+  // Axis inversion
+  final bool invertGyroX;
+  final bool invertGyroY;
+  final bool invertGestureX;
+  final bool invertGestureY;
+
+  // Callback functions
+  final VoidCallback? onCardTap;
+  final VoidCallback? onCardDoubleTap;
+  final Function(String)? onMatrikelnrCopy;
+  final Function(String)? onLrzKennungCopy;
 
   const HolographicCard({
     super.key,
@@ -145,6 +159,18 @@ class HolographicCard extends StatefulWidget {
     this.shaderPointerInfluence = 5.0,
     this.shaderColorAmplitude = 0.03,
     this.shaderBaseAlpha = 0.5,
+
+    // Axis inversion
+    this.invertGyroX = false,
+    this.invertGyroY = false,
+    this.invertGestureX = false,
+    this.invertGestureY = false,
+
+    // Callback functions
+    this.onCardTap,
+    this.onCardDoubleTap,
+    this.onMatrikelnrCopy,
+    this.onLrzKennungCopy,
   });
 
   @override
@@ -209,12 +235,17 @@ class _HolographicCardState extends State<HolographicCard>
     }
     _lastGyroUpdate = now;
 
-    // Update target values - Inverted the signs for more natural movement
+    // Apply inversion if specified
+    final yFactor = widget.invertGyroY ? 1 : -1;
+    final xFactor = widget.invertGyroX ? -1 : 1;
+
     _targetGyroscopeOffset = Offset(
       _targetGyroscopeOffset.dx * widget.gyroSmoothing +
-          (-event.y * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
+          (yFactor * event.y * widget.gyroSensitivity) *
+              (1 - widget.gyroSmoothing),
       _targetGyroscopeOffset.dy * widget.gyroSmoothing +
-          (event.x * widget.gyroSensitivity) * (1 - widget.gyroSmoothing),
+          (xFactor * event.x * widget.gyroSensitivity) *
+              (1 - widget.gyroSmoothing),
     );
 
     // Ensure animation is running
@@ -297,6 +328,13 @@ class _HolographicCardState extends State<HolographicCard>
     final double finalRotateY = gestureRotateY + gyroRotateY;
 
     return GestureDetector(
+      onTap:
+          widget.onCardTap != null
+              ? () {
+                developer.log('Card tapped', name: 'HolographicCard');
+                widget.onCardTap!();
+              }
+              : null,
       onPanStart:
           widget.enableGestures
               ? (details) {
@@ -313,10 +351,12 @@ class _HolographicCardState extends State<HolographicCard>
                 );
                 setState(() {
                   _offset = Offset(
-                    (localPosition.dx / renderBox.size.width) -
-                        0.5, // Center is (0,0)
-                    (localPosition.dy / renderBox.size.height) -
-                        0.5, // Center is (0,0)
+                    widget.invertGestureX
+                        ? -((localPosition.dx / renderBox.size.width) - 0.5)
+                        : ((localPosition.dx / renderBox.size.width) - 0.5),
+                    widget.invertGestureY
+                        ? -((localPosition.dy / renderBox.size.height) - 0.5)
+                        : ((localPosition.dy / renderBox.size.height) - 0.5),
                   );
                 });
               }
@@ -345,6 +385,11 @@ class _HolographicCardState extends State<HolographicCard>
                   _flipController.forward();
                 }
                 _isFlipped = !_isFlipped;
+
+                if (widget.onCardDoubleTap != null) {
+                  developer.log('Card double tapped', name: 'HolographicCard');
+                  widget.onCardDoubleTap!();
+                }
               }
               : null,
       child: AnimatedBuilder(
@@ -806,11 +851,35 @@ class _HolographicCardState extends State<HolographicCard>
                                                 ),
                                               ),
                                               const SizedBox(width: 5),
-                                              Icon(
-                                                Icons.copy,
-                                                color:
-                                                    widget.secondaryTextColor,
-                                                size: 16,
+                                              GestureDetector(
+                                                onTap:
+                                                    widget.onMatrikelnrCopy !=
+                                                            null
+                                                        ? () {
+                                                          developer.log(
+                                                            'Copying Matrikelnr: ${widget.matrikelnr}',
+                                                            name:
+                                                                'HolographicCard',
+                                                          );
+                                                          Clipboard.setData(
+                                                            ClipboardData(
+                                                              text:
+                                                                  widget
+                                                                      .matrikelnr,
+                                                            ),
+                                                          );
+                                                          widget
+                                                              .onMatrikelnrCopy!(
+                                                            widget.matrikelnr,
+                                                          );
+                                                        }
+                                                        : null,
+                                                child: Icon(
+                                                  Icons.copy,
+                                                  color:
+                                                      widget.secondaryTextColor,
+                                                  size: 16,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -844,11 +913,35 @@ class _HolographicCardState extends State<HolographicCard>
                                                 ),
                                               ),
                                               const SizedBox(width: 5),
-                                              Icon(
-                                                Icons.copy,
-                                                color:
-                                                    widget.secondaryTextColor,
-                                                size: 16,
+                                              GestureDetector(
+                                                onTap:
+                                                    widget.onLrzKennungCopy !=
+                                                            null
+                                                        ? () {
+                                                          developer.log(
+                                                            'Copying LRZ Kennung: ${widget.lrzKennung}',
+                                                            name:
+                                                                'HolographicCard',
+                                                          );
+                                                          Clipboard.setData(
+                                                            ClipboardData(
+                                                              text:
+                                                                  widget
+                                                                      .lrzKennung,
+                                                            ),
+                                                          );
+                                                          widget
+                                                              .onLrzKennungCopy!(
+                                                            widget.lrzKennung,
+                                                          );
+                                                        }
+                                                        : null,
+                                                child: Icon(
+                                                  Icons.copy,
+                                                  color:
+                                                      widget.secondaryTextColor,
+                                                  size: 16,
+                                                ),
                                               ),
                                             ],
                                           ),

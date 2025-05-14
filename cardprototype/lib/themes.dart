@@ -45,12 +45,24 @@ class CardThemes {
     name: 'Blue',
   );
 
+  // LMU Red theme
+  static const redTheme = LMUCardTheme(
+    cardColor: Color.fromARGB(255, 128, 0, 0),
+    textColor: Colors.white,
+    secondaryTextColor: Color.fromARGB(255, 208, 208, 208),
+    logoColor: Colors.white,
+    hologramColor: Colors.white,
+    borderColor: Color.fromARGB(255, 128, 0, 0),
+    name: 'Red',
+  );
+
   // List of all available themes
   static const List<LMUCardTheme> allThemes = [
     whiteTheme,
     greenTheme,
     darkTheme,
     blueTheme,
+    redTheme,
   ];
 }
 
@@ -86,6 +98,10 @@ class LMUCardTheme {
   static const bool enableShader = true;
   static const bool enableHolographicEffects = true;
   static const bool enableShadows = true;
+  static const bool invertGyroY = false;
+  static const bool invertGyroX = false;
+  static const bool invertGestureX = false;
+  static const bool invertGestureY = false;
 
   // Logo properties
   static const double logoWidth = 60;
