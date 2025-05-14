@@ -5,17 +5,17 @@
 uniform vec2 uResolution;  // Dimensions of the card in pixels
 uniform vec2 uPointerPos;  // Mouse/tilt position normalized to 0-1 range
 uniform vec2 uCenter;      // Dynamic center position for the circular mask
+// Custom parameters
+uniform float uWaveFrequency; // Frequency of the wave pattern
+uniform float uPointerInfluence; // How much the pointer affects the pattern
+uniform float uColorAmplitude; // Amplitude of the color variation
+uniform float uBaseAlpha; // Base alpha value for the holographic effect
 
 // Output color
 out vec4 fragColor;
 
-// Shader parameters
-const float WAVE_FREQUENCY = 5.0;
-const float POINTER_INFLUENCE = 5.0;
-const float COLOR_AMPLITUDE = 0.03;
-const float COLOR_MIDPOINT = 0.3;
-const float BASE_ALPHA = 0.5;
-const float DIAGONAL_FREQ = 5.0;
+// Shader parameters - these are now configurable via uniforms
+// const float DIAGONAL_FREQ = 5.0; // We'll derive this from wave frequency
 
 // Constant rotation angle (in radians)
 const float ROTATION_ANGLE = 0.785398; // ~45 degrees
@@ -47,19 +47,22 @@ void main() {
     vec2 uv = FlutterFragCoord().xy / uResolution;
     vec2 rotatedUV = rotate(uv, ROTATION_ANGLE);
 
-    float R = sin(rotatedUV.x * WAVE_FREQUENCY + uPointerPos.x * POINTER_INFLUENCE)
-             * COLOR_AMPLITUDE + COLOR_MIDPOINT;
+    // Use custom frequency and pointer influence
+    float R = sin(rotatedUV.x * uWaveFrequency + uPointerPos.x * uPointerInfluence)
+             * uColorAmplitude + 0.3;
 
-    float G = cos(rotatedUV.y * WAVE_FREQUENCY - uPointerPos.y * POINTER_INFLUENCE)
-             * COLOR_AMPLITUDE + COLOR_MIDPOINT;
+    float G = cos(rotatedUV.y * uWaveFrequency - uPointerPos.y * uPointerInfluence)
+             * uColorAmplitude + 0.3;
 
-    float B = sin((rotatedUV.x + rotatedUV.y) * DIAGONAL_FREQ)
-             * COLOR_AMPLITUDE + COLOR_MIDPOINT;
+    // Derive diagonal frequency from wave frequency
+    float diagonalFreq = uWaveFrequency;
+    float B = sin((rotatedUV.x + rotatedUV.y) * diagonalFreq)
+             * uColorAmplitude + 0.3;
 
     float brightness = (R + G + B) / 5.0;
 
-    // Apply circular falloff to alpha
-    float alpha = brightness * BASE_ALPHA * circularMask(uv);
+    // Apply circular falloff to alpha with custom base alpha
+    float alpha = brightness * uBaseAlpha * circularMask(uv);
 
     fragColor = vec4(R, G, B, alpha);
 }

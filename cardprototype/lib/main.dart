@@ -109,13 +109,12 @@ class StudentIDCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return HolographicCard(
       // User data
-      name: 'Anton Rockenstein',
-      email: 'Anton.Rockenstein@campus.lmu.de',
+      name: 'Gustav Gans',
+      email: 'Gustav.Gans@campus.lmu.de',
       validUntil: 'Gültig bis 30.09.2025',
-      matrikelnr: '12842818',
-      lrzKennung: 'roa1284',
-      braille: '⠇⠍⠥',
-
+      matrikelnr: '1234567890',
+      lrzKennung: 'gg1234',
+      braille: '⠇⠍⠥', //LMU Backwards
       // Card appearance
       cardColor: theme.cardColor,
       textColor: theme.textColor,
@@ -124,7 +123,7 @@ class StudentIDCard extends StatelessWidget {
       hologramColor: theme.hologramColor,
       width: 350,
       height: 220,
-      borderRadius: 15,
+      borderRadius: 20,
       borderCardColor: theme.borderColor,
       borderWidth: 2.0,
 
@@ -143,6 +142,33 @@ class StudentIDCard extends StatelessWidget {
       hologramCenterMovement: LMUCardTheme.hologramCenterMovement,
       shadowOffsetMultiplier: LMUCardTheme.shadowOffsetMultiplier,
       shadowIntensityMultiplier: LMUCardTheme.shadowIntensityMultiplier,
+
+      // Feature toggles
+      enableFlip: LMUCardTheme.enableFlip,
+      enableGyro: LMUCardTheme.enableGyro,
+      enableGestures: LMUCardTheme.enableGestures,
+      enableShader: LMUCardTheme.enableShader,
+      enableHolographicEffects: LMUCardTheme.enableHolographicEffects,
+      enableShadows: LMUCardTheme.enableShadows,
+
+      // Logo properties
+      logoWidth: LMUCardTheme.logoWidth,
+      logoHeight: LMUCardTheme.logoHeight,
+      logoPosition: LMUCardTheme.logoPosition,
+
+      // Hologram properties
+      hologram1Width: LMUCardTheme.hologram1Width,
+      hologram1Height: LMUCardTheme.hologram1Height,
+      hologram1Position: LMUCardTheme.hologram1Position,
+      hologram2Width: LMUCardTheme.hologram2Width,
+      hologram2Height: LMUCardTheme.hologram2Height,
+      hologram2Position: LMUCardTheme.hologram2Position,
+
+      // Shader parameters
+      shaderWaveFrequency: LMUCardTheme.shaderWaveFrequency,
+      shaderPointerInfluence: LMUCardTheme.shaderPointerInfluence,
+      shaderColorAmplitude: LMUCardTheme.shaderColorAmplitude,
+      shaderBaseAlpha: LMUCardTheme.shaderBaseAlpha,
 
       // Assets
       logoAsset: 'assets/holograms/legal_logo.svg',

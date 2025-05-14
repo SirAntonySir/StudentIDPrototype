@@ -47,6 +47,33 @@ class HolographicCard extends StatefulWidget {
   final String? hologramAsset2;
   final String? textureAsset;
 
+  // Feature toggles
+  final bool enableFlip;
+  final bool enableGyro;
+  final bool enableGestures;
+  final bool enableShader;
+  final bool enableHolographicEffects;
+  final bool enableShadows;
+
+  // Logo properties
+  final double logoWidth;
+  final double logoHeight;
+  final Offset logoPosition;
+
+  // Hologram properties
+  final double hologram1Width;
+  final double hologram1Height;
+  final Offset hologram1Position;
+  final double hologram2Width;
+  final double hologram2Height;
+  final Offset hologram2Position;
+
+  // Shader parameters
+  final double shaderWaveFrequency;
+  final double shaderPointerInfluence;
+  final double shaderColorAmplitude;
+  final double shaderBaseAlpha;
+
   const HolographicCard({
     super.key,
     // User data
@@ -71,8 +98,6 @@ class HolographicCard extends StatefulWidget {
     this.hologramColor = Colors.white70,
     this.borderCardColor = Colors.black,
 
-    // Shader intensity
-
     // Shadow properties
     this.ambientShadowOpacity = 0.4,
     this.ambientShadowBlur = 30,
@@ -94,6 +119,32 @@ class HolographicCard extends StatefulWidget {
     this.hologramAsset = 'assets/holograms/LMU-Sigel.svg',
     this.hologramAsset2 = 'assets/holograms/LMUcard.svg',
     this.textureAsset = 'assets/grain/grain1.jpeg',
+
+    // Feature toggles
+    this.enableFlip = true,
+    this.enableGyro = true,
+    this.enableGestures = true,
+    this.enableShader = true,
+    this.enableHolographicEffects = true,
+    this.enableShadows = true,
+
+    // Logo properties
+    this.logoWidth = 62,
+    this.logoHeight = 32,
+    this.logoPosition = const Offset(20, 20),
+
+    // Hologram properties
+    this.hologram1Width = 150,
+    this.hologram1Height = 150,
+    this.hologram1Position = const Offset(-1, -1), // -1 means bottom right
+    this.hologram2Width = double.infinity, // Use width of the card
+    this.hologram2Height = 40,
+    this.hologram2Position = const Offset(0, -1), // -1 for bottom means bottom
+    // Shader parameters
+    this.shaderWaveFrequency = 5.0,
+    this.shaderPointerInfluence = 5.0,
+    this.shaderColorAmplitude = 0.03,
+    this.shaderBaseAlpha = 0.5,
   });
 
   @override
@@ -143,7 +194,10 @@ class _HolographicCardState extends State<HolographicCard>
       duration: const Duration(milliseconds: 16), // ~60fps
     )..addListener(_updateGyroscope);
 
-    _gyroscopeSubscription = gyroscopeEvents.listen(_handleGyroscopeEvent);
+    // Only subscribe to gyroscope events if enabled
+    if (widget.enableGyro) {
+      _gyroscopeSubscription = gyroscopeEvents.listen(_handleGyroscopeEvent);
+    }
 
     _loadHolographicShader();
   }
@@ -183,6 +237,15 @@ class _HolographicCardState extends State<HolographicCard>
   }
 
   Future<void> _loadHolographicShader() async {
+    if (!widget.enableShader) {
+      if (mounted) {
+        setState(() {
+          _holographicProgram = null;
+        });
+      }
+      return;
+    }
+
     try {
       final program = await ui.FragmentProgram.fromAsset(
         'assets/shaders/holographic_shader.frag.glsl',
@@ -214,53 +277,76 @@ class _HolographicCardState extends State<HolographicCard>
   @override
   Widget build(BuildContext context) {
     // Parallax rotations from gestures (offset is now -0.5 to 0.5)
-    final double gestureRotateX = -_offset.dy * widget.gestureSensitivity;
-    final double gestureRotateY = _offset.dx * widget.gestureSensitivity;
+    final double gestureRotateX =
+        widget.enableGestures ? -_offset.dy * widget.gestureSensitivity : 0.0;
+    final double gestureRotateY =
+        widget.enableGestures ? _offset.dx * widget.gestureSensitivity : 0.0;
 
     // Parallax rotations from gyroscope
     final double gyroRotateX =
-        -_gyroscopeOffset.dy; // dy influences X-axis rotation
+        widget.enableGyro
+            ? -_gyroscopeOffset.dy
+            : 0.0; // dy influences X-axis rotation
     final double gyroRotateY =
-        _gyroscopeOffset.dx; // dx influences Y-axis rotation
+        widget.enableGyro
+            ? _gyroscopeOffset.dx
+            : 0.0; // dx influences Y-axis rotation
 
     // Combined rotation
     final double finalRotateX = gestureRotateX + gyroRotateX;
     final double finalRotateY = gestureRotateY + gyroRotateY;
 
     return GestureDetector(
-      onPanStart: (details) {
-        _returnToCenterController.stop();
-      },
-      onPanUpdate: (details) {
-        final RenderBox renderBox = context.findRenderObject() as RenderBox;
-        final localPosition = renderBox.globalToLocal(details.globalPosition);
-        setState(() {
-          _offset = Offset(
-            (localPosition.dx / renderBox.size.width) - 0.5, // Center is (0,0)
-            (localPosition.dy / renderBox.size.height) - 0.5, // Center is (0,0)
-          );
-        });
-      },
-      onPanEnd: (details) {
-        _returnAnimation = Tween<Offset>(
-          begin: _offset,
-          end: Offset.zero, // Animate back to center
-        ).animate(
-          CurvedAnimation(
-            parent: _returnToCenterController,
-            curve: Curves.easeOut,
-          ),
-        );
-        _returnToCenterController.forward(from: 0);
-      },
-      onDoubleTap: () {
-        if (_isFlipped) {
-          _flipController.reverse();
-        } else {
-          _flipController.forward();
-        }
-        _isFlipped = !_isFlipped;
-      },
+      onPanStart:
+          widget.enableGestures
+              ? (details) {
+                _returnToCenterController.stop();
+              }
+              : null,
+      onPanUpdate:
+          widget.enableGestures
+              ? (details) {
+                final RenderBox renderBox =
+                    context.findRenderObject() as RenderBox;
+                final localPosition = renderBox.globalToLocal(
+                  details.globalPosition,
+                );
+                setState(() {
+                  _offset = Offset(
+                    (localPosition.dx / renderBox.size.width) -
+                        0.5, // Center is (0,0)
+                    (localPosition.dy / renderBox.size.height) -
+                        0.5, // Center is (0,0)
+                  );
+                });
+              }
+              : null,
+      onPanEnd:
+          widget.enableGestures
+              ? (details) {
+                _returnAnimation = Tween<Offset>(
+                  begin: _offset,
+                  end: Offset.zero, // Animate back to center
+                ).animate(
+                  CurvedAnimation(
+                    parent: _returnToCenterController,
+                    curve: Curves.easeOut,
+                  ),
+                );
+                _returnToCenterController.forward(from: 0);
+              }
+              : null,
+      onDoubleTap:
+          widget.enableFlip
+              ? () {
+                if (_isFlipped) {
+                  _flipController.reverse();
+                } else {
+                  _flipController.forward();
+                }
+                _isFlipped = !_isFlipped;
+              }
+              : null,
       child: AnimatedBuilder(
         // Use AnimatedBuilder for flip animation
         animation: _flipController,
@@ -317,52 +403,62 @@ class _HolographicCardState extends State<HolographicCard>
                     width: widget.width,
                     height: widget.height,
                     decoration: BoxDecoration(
-                      boxShadow: [
-                        // Ambient soft shadow that's always visible for resting state
-                        BoxShadow(
-                          color: Colors.black.withOpacity(
-                            widget.ambientShadowOpacity,
-                          ),
-                          blurRadius: widget.ambientShadowBlur,
-                          offset: Offset(0, widget.ambientShadowYOffset),
-                          spreadRadius: 0,
-                        ),
-                        // Primary shadow - closest to card, follows movement most
-                        BoxShadow(
-                          color: Colors.black.withOpacity(
-                            widget.primaryShadowOpacity *
-                                shadowIntensityLimited,
-                          ),
-                          blurRadius: shadowBlur * 0.3,
-                          offset: Offset(
-                            shadowOffsetX * 0.8,
-                            shadowOffsetY * 0.8 + 2,
-                          ),
-                          spreadRadius: shadowSpread * 0.3,
-                        ),
-                        // Mid-level shadow - larger spread, more diffuse
-                        BoxShadow(
-                          color: Colors.black.withOpacity(
-                            widget.midShadowOpacity * shadowIntensityLimited,
-                          ),
-                          blurRadius: shadowBlur * 0.8,
-                          offset: Offset(
-                            shadowOffsetX * 0.9,
-                            shadowOffsetY * 0.9 + 6,
-                          ),
-                          spreadRadius: shadowSpread * 0.8,
-                        ),
-                        // Distant shadow - largest, most diffuse
-                        BoxShadow(
-                          color: Colors.black.withOpacity(
-                            widget.distantShadowOpacity *
-                                shadowIntensityLimited,
-                          ),
-                          blurRadius: shadowBlur * 1.5,
-                          offset: Offset(shadowOffsetX, shadowOffsetY + 10),
-                          spreadRadius: shadowSpread * 1.5,
-                        ),
-                      ],
+                      boxShadow:
+                          widget.enableShadows
+                              ? [
+                                // Ambient soft shadow that's always visible for resting state
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(
+                                    widget.ambientShadowOpacity,
+                                  ),
+                                  blurRadius: widget.ambientShadowBlur,
+                                  offset: Offset(
+                                    0,
+                                    widget.ambientShadowYOffset,
+                                  ),
+                                  spreadRadius: 0,
+                                ),
+                                // Primary shadow - closest to card, follows movement most
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(
+                                    widget.primaryShadowOpacity *
+                                        shadowIntensityLimited,
+                                  ),
+                                  blurRadius: shadowBlur * 0.3,
+                                  offset: Offset(
+                                    shadowOffsetX * 0.8,
+                                    shadowOffsetY * 0.8 + 2,
+                                  ),
+                                  spreadRadius: shadowSpread * 0.3,
+                                ),
+                                // Mid-level shadow - larger spread, more diffuse
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(
+                                    widget.midShadowOpacity *
+                                        shadowIntensityLimited,
+                                  ),
+                                  blurRadius: shadowBlur * 0.8,
+                                  offset: Offset(
+                                    shadowOffsetX * 0.9,
+                                    shadowOffsetY * 0.9 + 6,
+                                  ),
+                                  spreadRadius: shadowSpread * 0.8,
+                                ),
+                                // Distant shadow - largest, most diffuse
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(
+                                    widget.distantShadowOpacity *
+                                        shadowIntensityLimited,
+                                  ),
+                                  blurRadius: shadowBlur * 1.5,
+                                  offset: Offset(
+                                    shadowOffsetX,
+                                    shadowOffsetY + 10,
+                                  ),
+                                  spreadRadius: shadowSpread * 1.5,
+                                ),
+                              ]
+                              : [],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(widget.borderRadius),
@@ -371,7 +467,8 @@ class _HolographicCardState extends State<HolographicCard>
                           // Base card with holographic effects
                           ShaderMask(
                             shaderCallback: (Rect bounds) {
-                              if (_holographicProgram == null) {
+                              if (_holographicProgram == null ||
+                                  !widget.enableShader) {
                                 return ui.Gradient.linear(
                                   Offset.zero,
                                   Offset(bounds.width, bounds.height),
@@ -384,16 +481,23 @@ class _HolographicCardState extends State<HolographicCard>
 
                               // Combine touch and gyroscope effects
                               final combinedX =
-                                  _offset.dx + _gyroscopeOffset.dx;
+                                  widget.enableGestures ? _offset.dx : 0.0;
                               final combinedY =
-                                  _offset.dy + _gyroscopeOffset.dy;
+                                  widget.enableGestures ? _offset.dy : 0.0;
+                              final gyroX =
+                                  widget.enableGyro ? _gyroscopeOffset.dx : 0.0;
+                              final gyroY =
+                                  widget.enableGyro ? _gyroscopeOffset.dy : 0.0;
+
+                              final totalX = combinedX + gyroX;
+                              final totalY = combinedY + gyroY;
 
                               // Mirror the effect when card is flipped
                               final effectX =
                                   _flipController.value >= 0.5
-                                      ? -combinedX
-                                      : combinedX;
-                              final effectY = combinedY;
+                                      ? -totalX
+                                      : totalX;
+                              final effectY = totalY;
 
                               final centerX =
                                   0.5 +
@@ -416,6 +520,11 @@ class _HolographicCardState extends State<HolographicCard>
                               );
                               shader.setFloat(4, centerX);
                               shader.setFloat(5, centerY);
+                              // Pass custom shader parameters
+                              shader.setFloat(6, widget.shaderWaveFrequency);
+                              shader.setFloat(7, widget.shaderPointerInfluence);
+                              shader.setFloat(8, widget.shaderColorAmplitude);
+                              shader.setFloat(9, widget.shaderBaseAlpha);
                               return shader;
                             },
                             blendMode: BlendMode.srcOver,
@@ -427,23 +536,55 @@ class _HolographicCardState extends State<HolographicCard>
                           ),
 
                           // Holographic watermarks layer
-                          if (_flipController.value < 0.5) ...[
+                          if (_flipController.value < 0.5 &&
+                              widget.enableHolographicEffects) ...[
                             ..._buildHolographicWatermarks(
-                              combinedX: _offset.dx + _gyroscopeOffset.dx,
-                              combinedY: _offset.dy + _gyroscopeOffset.dy,
+                              combinedX:
+                                  widget.enableGestures
+                                      ? _offset.dx
+                                      : 0.0 +
+                                          (widget.enableGyro
+                                              ? _gyroscopeOffset.dx
+                                              : 0.0),
+                              combinedY:
+                                  widget.enableGestures
+                                      ? _offset.dy
+                                      : 0.0 +
+                                          (widget.enableGyro
+                                              ? _gyroscopeOffset.dy
+                                              : 0.0),
                             ),
 
                             // First hologram
                             if (widget.hologramAsset != null)
                               Positioned(
-                                bottom: 0,
-                                right: 0,
+                                bottom:
+                                    widget.hologram1Position.dy == -1
+                                        ? 0
+                                        : widget.hologram1Position.dy,
+                                right:
+                                    widget.hologram1Position.dx == -1
+                                        ? 0
+                                        : null,
+                                left:
+                                    widget.hologram1Position.dx >= 0
+                                        ? widget.hologram1Position.dx
+                                        : null,
+                                top:
+                                    widget.hologram1Position.dy >= 0
+                                        ? widget.hologram1Position.dy
+                                        : null,
                                 child: Opacity(
-                                  opacity: (0.8 -
-                                          (_offset.dy + _gyroscopeOffset.dy)
-                                                  .abs() *
-                                              2)
-                                      .clamp(0.0, 1.0),
+                                  opacity:
+                                      widget.enableHolographicEffects
+                                          ? (0.8 -
+                                                  ((_offset.dy +
+                                                              _gyroscopeOffset
+                                                                  .dy)
+                                                          .abs() *
+                                                      2))
+                                              .clamp(0.0, 1.0)
+                                          : 0.8,
                                   child: ShaderMask(
                                     shaderCallback: (Rect bounds) {
                                       return LinearGradient(
@@ -460,8 +601,8 @@ class _HolographicCardState extends State<HolographicCard>
                                     blendMode: BlendMode.srcIn,
                                     child: SvgPicture.asset(
                                       widget.hologramAsset!,
-                                      width: 150,
-                                      height: 150,
+                                      width: widget.hologram1Width,
+                                      height: widget.hologram1Height,
                                       colorFilter: ColorFilter.mode(
                                         widget.hologramColor,
                                         BlendMode.srcIn,
@@ -474,27 +615,45 @@ class _HolographicCardState extends State<HolographicCard>
                             // Second hologram
                             if (widget.hologramAsset2 != null)
                               Positioned(
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
+                                bottom:
+                                    widget.hologram2Position.dy == -1
+                                        ? 0
+                                        : widget.hologram2Position.dy,
+                                left:
+                                    widget.hologram2Position.dx >= 0
+                                        ? widget.hologram2Position.dx
+                                        : 0,
+                                right:
+                                    widget.hologram2Position.dx == -1
+                                        ? 0
+                                        : null,
+                                top:
+                                    widget.hologram2Position.dy >= 0
+                                        ? widget.hologram2Position.dy
+                                        : null,
                                 child: Opacity(
                                   opacity:
-                                      (_offset.dx + _gyroscopeOffset.dx) > 0.15
-                                          ? (((_offset.dx +
-                                                          _gyroscopeOffset.dx) -
-                                                      0.15) *
-                                                  5)
-                                              .clamp(0.0, 0.9)
-                                          : 0.0,
+                                      widget.enableHolographicEffects
+                                          ? ((_offset.dx +
+                                                      _gyroscopeOffset.dx) >
+                                                  0.15
+                                              ? (((_offset.dx +
+                                                              _gyroscopeOffset
+                                                                  .dx) -
+                                                          0.15) *
+                                                      5)
+                                                  .clamp(0.0, 0.9)
+                                              : 0.0)
+                                          : 0.5,
                                   child: ShaderMask(
                                     shaderCallback: (Rect bounds) {
                                       return LinearGradient(
                                         begin: Alignment.centerLeft,
                                         end: Alignment.centerRight,
                                         colors: [
+                                          widget.hologramColor.withOpacity(0.2),
                                           widget.hologramColor.withOpacity(0.4),
-                                          widget.hologramColor.withOpacity(0.6),
-                                          widget.hologramColor.withOpacity(0.4),
+                                          widget.hologramColor.withOpacity(0.2),
                                         ],
                                         stops: const [0.0, 0.5, 1.0],
                                       ).createShader(bounds);
@@ -502,8 +661,8 @@ class _HolographicCardState extends State<HolographicCard>
                                     blendMode: BlendMode.srcIn,
                                     child: SvgPicture.asset(
                                       widget.hologramAsset2!,
-                                      width: widget.width,
-                                      height: 40,
+                                      width: widget.hologram2Width,
+                                      height: widget.hologram2Height,
                                       fit: BoxFit.fitWidth,
                                       colorFilter: ColorFilter.mode(
                                         Colors.white,
@@ -538,14 +697,14 @@ class _HolographicCardState extends State<HolographicCard>
                                     // Front content
                                     // LMU Logo
                                     Positioned(
-                                      top: 20,
-                                      left: 20,
+                                      top: widget.logoPosition.dy,
+                                      left: widget.logoPosition.dx,
                                       child:
                                           widget.logoAsset != null
                                               ? SvgPicture.asset(
                                                 widget.logoAsset!,
-                                                width: 62,
-                                                height: 32,
+                                                width: widget.logoWidth,
+                                                height: widget.logoHeight,
                                                 colorFilter: ColorFilter.mode(
                                                   widget.logoColor,
                                                   BlendMode.srcIn,
@@ -760,6 +919,10 @@ class _HolographicCardState extends State<HolographicCard>
     required double combinedX,
     required double combinedY,
   }) {
+    if (!widget.enableHolographicEffects) {
+      return [];
+    }
+
     final List<Widget> watermarks = [];
 
     // Define grid properties

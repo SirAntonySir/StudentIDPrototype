@@ -8,7 +8,7 @@ class CardThemes {
     secondaryTextColor: Colors.black54,
     logoColor: Colors.black,
     hologramColor: Colors.white,
-    borderColor: Color.fromARGB(255, 184, 184, 184),
+    borderColor: Color.fromARGB(255, 255, 255, 255),
     name: 'Holo',
   );
 
@@ -78,6 +78,36 @@ class LMUCardTheme {
   static const double hologramCenterMovement = 0.3;
   static const double shadowOffsetMultiplier = 25.0;
   static const double shadowIntensityMultiplier = 2.5;
+
+  // Feature toggles with defaults
+  static const bool enableFlip = false;
+  static const bool enableGyro = true;
+  static const bool enableGestures = true;
+  static const bool enableShader = true;
+  static const bool enableHolographicEffects = true;
+  static const bool enableShadows = true;
+
+  // Logo properties
+  static const double logoWidth = 60;
+  static const double logoHeight = 40;
+  static const Offset logoPosition = Offset(20, 20);
+
+  // Hologram properties
+  static const double hologram1Width = 150;
+  static const double hologram1Height = 150;
+  static const Offset hologram1Position = Offset(
+    -1,
+    -1,
+  ); // -1 means bottom right
+  static const double hologram2Width = 400; // Use width of the card
+  static const double hologram2Height = 100;
+  static const Offset hologram2Position = Offset(-1, -0.5);
+
+  // Shader parameters
+  static const double shaderWaveFrequency = 5.0;
+  static const double shaderPointerInfluence = 5.0;
+  static const double shaderColorAmplitude = 0.03;
+  static const double shaderBaseAlpha = 0.5;
 
   const LMUCardTheme({
     required this.cardColor,
