@@ -6,6 +6,8 @@ import 'dart:ui' as ui;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
+import 'components/holographic_watermarks.dart';
+import 'components/holographic_assets.dart';
 
 class HolographicCard extends StatefulWidget {
   // User data
@@ -581,142 +583,34 @@ class _HolographicCardState extends State<HolographicCard>
                           ),
 
                           // Holographic watermarks layer
-                          if (_flipController.value < 0.5 &&
-                              widget.enableHolographicEffects) ...[
-                            ..._buildHolographicWatermarks(
-                              combinedX:
-                                  widget.enableGestures
-                                      ? _offset.dx
-                                      : 0.0 +
-                                          (widget.enableGyro
-                                              ? _gyroscopeOffset.dx
-                                              : 0.0),
-                              combinedY:
-                                  widget.enableGestures
-                                      ? _offset.dy
-                                      : 0.0 +
-                                          (widget.enableGyro
-                                              ? _gyroscopeOffset.dy
-                                              : 0.0),
+                          if (_flipController.value < 0.5) ...[
+                            HolographicWatermarks(
+                              width: widget.width,
+                              height: widget.height,
+                              name: widget.name,
+                              matrikelnr: widget.matrikelnr,
+                              hologramColor: widget.hologramColor,
+                              enableHolographicEffects:
+                                  widget.enableHolographicEffects,
+                              combinedX: combinedX,
+                              combinedY: combinedY,
                             ),
 
-                            // First hologram
-                            if (widget.hologramAsset != null)
-                              Positioned(
-                                bottom:
-                                    widget.hologram1Position.dy == -1
-                                        ? 0
-                                        : widget.hologram1Position.dy,
-                                right:
-                                    widget.hologram1Position.dx == -1
-                                        ? 0
-                                        : null,
-                                left:
-                                    widget.hologram1Position.dx >= 0
-                                        ? widget.hologram1Position.dx
-                                        : null,
-                                top:
-                                    widget.hologram1Position.dy >= 0
-                                        ? widget.hologram1Position.dy
-                                        : null,
-                                child: Opacity(
-                                  opacity:
-                                      widget.enableHolographicEffects
-                                          ? (0.8 -
-                                                  ((_offset.dy +
-                                                              _gyroscopeOffset
-                                                                  .dy)
-                                                          .abs() *
-                                                      2))
-                                              .clamp(0.0, 1.0)
-                                          : 0.8,
-                                  child: ShaderMask(
-                                    shaderCallback: (Rect bounds) {
-                                      return LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          widget.hologramColor.withOpacity(0),
-                                          widget.hologramColor.withOpacity(1),
-                                          widget.hologramColor.withOpacity(0),
-                                        ],
-                                        stops: const [0.0, 0.5, 1.0],
-                                      ).createShader(bounds);
-                                    },
-                                    blendMode: BlendMode.srcIn,
-                                    child: SvgPicture.asset(
-                                      widget.hologramAsset!,
-                                      width: widget.hologram1Width,
-                                      height: widget.hologram1Height,
-                                      colorFilter: ColorFilter.mode(
-                                        widget.hologramColor,
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                            // Second hologram
-                            if (widget.hologramAsset2 != null)
-                              Positioned(
-                                bottom:
-                                    widget.hologram2Position.dy == -1
-                                        ? 0
-                                        : widget.hologram2Position.dy,
-                                left:
-                                    widget.hologram2Position.dx >= 0
-                                        ? widget.hologram2Position.dx
-                                        : 0,
-                                right:
-                                    widget.hologram2Position.dx == -1
-                                        ? 0
-                                        : null,
-                                top:
-                                    widget.hologram2Position.dy >= 0
-                                        ? widget.hologram2Position.dy
-                                        : null,
-                                child: Opacity(
-                                  opacity:
-                                      widget.enableHolographicEffects
-                                          ? ((_offset.dx +
-                                                      _gyroscopeOffset.dx) >
-                                                  0.15
-                                              ? (((_offset.dx +
-                                                              _gyroscopeOffset
-                                                                  .dx) -
-                                                          0.15) *
-                                                      5)
-                                                  .clamp(0.0, 0.9)
-                                              : 0.0)
-                                          : 0.5,
-                                  child: ShaderMask(
-                                    shaderCallback: (Rect bounds) {
-                                      return LinearGradient(
-                                        begin: Alignment.centerLeft,
-                                        end: Alignment.centerRight,
-                                        colors: [
-                                          widget.hologramColor.withOpacity(0.2),
-                                          widget.hologramColor.withOpacity(0.4),
-                                          widget.hologramColor.withOpacity(0.2),
-                                        ],
-                                        stops: const [0.0, 0.5, 1.0],
-                                      ).createShader(bounds);
-                                    },
-                                    blendMode: BlendMode.srcIn,
-                                    child: SvgPicture.asset(
-                                      widget.hologramAsset2!,
-                                      width: widget.hologram2Width,
-                                      height: widget.hologram2Height,
-                                      fit: BoxFit.fitWidth,
-                                      colorFilter: ColorFilter.mode(
-                                        Colors.white,
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            HolographicAssets(
+                              hologramAsset: widget.hologramAsset,
+                              hologramAsset2: widget.hologramAsset2,
+                              hologramColor: widget.hologramColor,
+                              enableHolographicEffects:
+                                  widget.enableHolographicEffects,
+                              combinedX: combinedX,
+                              combinedY: combinedY,
+                              hologram1Width: widget.hologram1Width,
+                              hologram1Height: widget.hologram1Height,
+                              hologram1Position: widget.hologram1Position,
+                              hologram2Width: widget.hologram2Width,
+                              hologram2Height: widget.hologram2Height,
+                              hologram2Position: widget.hologram2Position,
+                            ),
                           ],
 
                           // Content layer (front or back)
@@ -1006,100 +900,5 @@ class _HolographicCardState extends State<HolographicCard>
         },
       ),
     );
-  }
-
-  List<Widget> _buildHolographicWatermarks({
-    required double combinedX,
-    required double combinedY,
-  }) {
-    if (!widget.enableHolographicEffects) {
-      return [];
-    }
-
-    final List<Widget> watermarks = [];
-
-    // Define grid properties
-    const int rows = 3;
-    const int cols = 20;
-    final double cellWidth = widget.width / cols;
-    final double cellHeight = widget.height / rows;
-    const double rotation = math.pi / 2;
-
-    // Calculate opacity based on left tilt with shimmer effect
-    final tiltOpacity =
-        combinedX < -0.15 ? ((-combinedX - 0.15) * 5).clamp(0.0, 0.9) : 0.0;
-
-    // Create grid of watermarks
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < cols; col++) {
-        // Base position
-        final x = col * cellWidth;
-        final y = row * cellHeight;
-        final isName = (row + col) % 2 == 0;
-
-        // Parallax offset based on tilt
-        final parallaxX =
-            combinedX *
-            30 *
-            (col / cols); // Horizontal parallax increases with column
-        final parallaxY =
-            combinedY *
-            20 *
-            (row / rows); // Vertical parallax increases with row
-
-        // Shimmer effect - varies with position and tilt
-        final shimmerPhase = (col / cols + row / rows) * math.pi;
-        final shimmerIntensity =
-            (math.sin(shimmerPhase + combinedX * 5) + 1) / 2;
-
-        watermarks.add(
-          Positioned(
-            left: x + (cellWidth - 100) / 2 + parallaxX,
-            top: y + (cellHeight - 20) / 2 + parallaxY,
-            child: Transform.rotate(
-              angle: rotation,
-              child: ShaderMask(
-                shaderCallback: (Rect bounds) {
-                  return LinearGradient(
-                    begin: Alignment(
-                      -0.5 + combinedX, // Gradient moves with tilt
-                      -0.5 + combinedY,
-                    ),
-                    end: Alignment(1.5 + combinedX, 1.5 + combinedY),
-                    colors: [
-                      widget.hologramColor.withOpacity(
-                        (tiltOpacity * 0.4 * (1 + shimmerIntensity * 0.3))
-                            .clamp(0.0, 0.9),
-                      ),
-                      widget.hologramColor.withOpacity(
-                        (tiltOpacity * 0.6 * (1 + shimmerIntensity * 0.5))
-                            .clamp(0.0, 0.9),
-                      ),
-                      widget.hologramColor.withOpacity(
-                        (tiltOpacity * 0.4 * (1 + shimmerIntensity * 0.3))
-                            .clamp(0.0, 0.9),
-                      ),
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                  ).createShader(bounds);
-                },
-                blendMode: BlendMode.srcIn,
-                child: Text(
-                  (isName ? widget.name : widget.matrikelnr).toUpperCase(),
-                  style: TextStyle(
-                    color: widget.hologramColor,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }
-    }
-
-    return watermarks;
   }
 }

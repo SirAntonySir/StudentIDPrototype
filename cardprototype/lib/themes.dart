@@ -92,7 +92,7 @@ class LMUCardTheme {
   static const double shadowIntensityMultiplier = 2.5;
 
   // Feature toggles with defaults
-  static const bool enableFlip = false;
+  static const bool enableFlip = true;
   static const bool enableGyro = true;
   static const bool enableGestures = true;
   static const bool enableShader = true;
